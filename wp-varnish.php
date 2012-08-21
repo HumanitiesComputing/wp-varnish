@@ -363,7 +363,7 @@ class WPVarnish {
 
        echo "<hr />";
 
-       // draw all of the settings that is not globally set
+       // draw all of the settings that are not globally set
        if (!in_array('servers',$global_settings)) {
           ?>
           <!-- <table class="form-table" id="form-table" width=""> -->

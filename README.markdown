@@ -53,6 +53,9 @@ The varnish servers array will configure multiple servers for sending the
 purges. If VARNISH_SHOWCFG is defined, configuration will be shown to all
 users who access the plugin configuration page (but they can't edit it).
 
+The wp-config-varnish.php contains a fully documented insert containing all
+of the settings that are globally configurable via wp-config.php
+
 Screenshots
 -----------
 

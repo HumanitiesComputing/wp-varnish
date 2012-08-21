@@ -51,9 +51,14 @@ class WPVarnish {
     $this->wpv_showcfg_cfgname = "VARNISH_SHOWCFG";
     $this->wpv_hide_adminmenu_cfgname = "VARNISH_HIDE_ADMINMENU";
 
-    $wpv_addr_optval = array ("127.0.0.1");
-    $wpv_port_optval = array (80);
-    $wpv_secret_optval = array ("");
+    // Default values for server options
+    $this->wpv_addr_default = "127.0.0.1";
+    $this->wpv_port_default = 80;
+    $this->wpv_secret_default = "";
+
+    $wpv_addr_optval = array ($this->wpv_addr_default);
+    $wpv_port_optval = array ($this->wpv_port_default);
+    $wpv_secret_optval = array ($this->wpv_secret_default);
     $wpv_timeout_optval = 5;
     $wpv_update_pagenavi_optval = 0;
     $wpv_update_commentnavi_optval = 0;
@@ -344,9 +349,11 @@ class WPVarnish {
 
     if (is_array($varnish_servers)) {
        foreach ($varnish_servers as $server) {
-          list ($host, $port) = explode(':', $server);
-          $wpv_purgeaddr[] = $host;
-          $wpv_purgeport[] = $port;
+          $server = explode(':', $server);
+          
+          $wpv_purgeaddr[] = $server[0];
+          $wpv_purgeport[] = (array_key_exists(1,$server) ? $server[1] : $this->wpv_port_default);
+          $wpv_secret[] = (array_key_exists(2,$server) ? $server[2] : $this->wpv_secret_default);
        }
     } else {
        $wpv_purgeaddr = get_option($this->wpv_addr_optname);

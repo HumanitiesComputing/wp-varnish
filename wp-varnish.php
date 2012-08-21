@@ -43,6 +43,14 @@ class WPVarnish {
     $this->wpv_update_commentnavi_optname = "wpvarnish_update_commentnavi";
     $this->wpv_use_adminport_optname = "wpvarnish_use_adminport";
     $this->wpv_vversion_optname = "wpvarnish_vversion";
+
+    // Names for wp-config.php options
+    $this->wpv_timeout_cfgname = "VARNISH_TIMEOUT";
+    $this->wpv_use_adminport_cfgname = "VARNISH_USE_ADMINPORT";
+    $this->wpv_vversion_cfgname = "VARNISH_VVERSION";
+    $this->wpv_showcfg_cfgname = "VARNISH_SHOWCFG";
+    $this->wpv_hide_adminmenu_cfgname = "VARNISH_HIDE_ADMINMENU";
+
     $wpv_addr_optval = array ("127.0.0.1");
     $wpv_port_optval = array (80);
     $wpv_secret_optval = array ("");
@@ -176,7 +184,7 @@ class WPVarnish {
   }
 
   function WPVarnishAdminMenu() {
-    if (!defined('VARNISH_HIDE_ADMINMENU')) {
+    if (!defined($this->wpv_hide_adminmenu_cfgname)) {
       add_options_page(__('WP-Varnish Configuration','wp-varnish'), 'WP-Varnish', 1, 'WPVarnish', array($this, 'WPVarnishAdmin'));
     }
   }
@@ -262,7 +270,7 @@ class WPVarnish {
           if (is_array($varnish_servers)) {
              echo "<p>" . __("These values can't be edited since there's a global configuration located in <em>wp-config.php</em>. If you want to change these settings, please update the file or contact the administrator.",'wp-varnish') . "</p>\n";
              // Also, if defined, show the varnish servers configured (VARNISH_SHOWCFG)
-             if (defined('VARNISH_SHOWCFG')) {
+             if (defined($this->wpv_showcfg_cfgname)) {
                 echo "<h3>" . __("Current configuration:",'wp-varnish') . "</h3>\n";
                 echo "<ul>";
                 if ( isset($varnish_version) && $varnish_version )

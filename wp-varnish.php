@@ -46,8 +46,8 @@ class WPVarnish {
 
     // Names for wp-config.php options
     $this->wpv_timeout_cfgname = "VARNISH_TIMEOUT";
-    $this->wpv_use_adminport_cfgname = "VARNISH_USE_ADMINPORT";
-    $this->wpv_vversion_cfgname = "VARNISH_VVERSION";
+    $this->wpv_use_adminport_cfgname = "VARNISH_USE_ADMIN_PORT";
+    $this->wpv_vversion_cfgname = "VARNISH_VERSION";
     $this->wpv_showcfg_cfgname = "VARNISH_SHOWCFG";
     $this->wpv_hide_adminmenu_cfgname = "VARNISH_HIDE_ADMINMENU";
 
@@ -257,11 +257,8 @@ class WPVarnish {
        }
     }
 
-         $wpv_timeout_optval = get_option($this->wpv_timeout_optname);
          $wpv_update_pagenavi_optval = get_option($this->wpv_update_pagenavi_optname);
          $wpv_update_commentnavi_optval = get_option($this->wpv_update_commentnavi_optname);
-         $wpv_use_adminport_optval = get_option($this->wpv_use_adminport_optname);
-         $wpv_vversion_optval = get_option($this->wpv_vversion_optname);
     ?>
     <div class="wrap">
       <script type="text/javascript" src="<?php echo plugins_url('wp-varnish.js', __FILE__ ); ?>"></script>
@@ -269,66 +266,153 @@ class WPVarnish {
       <h3><?php echo __("IP address and port configuration",'wp-varnish'); ?></h3>
       <form method="POST" action="<?php echo $_SERVER['REQUEST_URI']; ?>">
     <?php
-          // Can't be edited - already defined in wp-config.php
-          global $varnish_servers;
-          global $varnish_version;
-          if (is_array($varnish_servers)) {
-             echo "<p>" . __("These values can't be edited since there's a global configuration located in <em>wp-config.php</em>. If you want to change these settings, please update the file or contact the administrator.",'wp-varnish') . "</p>\n";
-             // Also, if defined, show the varnish servers configured (VARNISH_SHOWCFG)
-             if (defined($this->wpv_showcfg_cfgname)) {
-                echo "<h3>" . __("Current configuration:",'wp-varnish') . "</h3>\n";
-                echo "<ul>";
-                if ( isset($varnish_version) && $varnish_version )
-                   echo "<li>" . __("Version: ",'wp-varnish') . $varnish_version . "</li>";
-                foreach ($varnish_servers as $server) {
-                   list ($host, $port, $secret) = explode(':', $server);
-                   echo "<li>" . __("Server: ",'wp-varnish') . $host . "<br/>" . __("Port: ",'wp-varnish') . $port . "</li>";
-                }
-                echo "</ul>";
-             }
-          } else {
-          // If not defined in wp-config.php, use individual configuration.
-    ?>
-       <!-- <table class="form-table" id="form-table" width=""> -->
-       <table class="form-table" id="form-table">
-        <tr valign="top">
-            <th scope="row"><?php echo __("Varnish Administration IP Address",'wp-varnish'); ?></th>
-            <th scope="row"><?php echo __("Varnish Administration Port",'wp-varnish'); ?></th>
-            <th scope="row"><?php echo __("Varnish Secret",'wp-varnish'); ?></th>
-        </tr>
-        <script>
-        <?php
+       // Get setting values and determine which settings are globally set 
+       $global_settings = array();
+
+       // load server information
+       global $varnish_servers;
+       if (is_array($varnish_servers)) {
+          $global_settings[] = "servers";
+
+          foreach ($varnish_servers as $server) {
+             $server = explode(':', $server);
+          
+             $addrs[] = $server[0];
+             $ports[] = (array_key_exists(1,$server) ? $server[1] : $this->wpv_port_default);
+             $secrets[] = (array_key_exists(2,$server) ? $server[2] : $this->wpv_secret_default);
+          }
+       } else {
           $addrs = get_option($this->wpv_addr_optname);
           $ports = get_option($this->wpv_port_optname);
           $secrets = get_option($this->wpv_secret_optname);
-          echo "rowCount = $i\n";
-          for ($i = 0; $i < count ($addrs); $i++) {
-             // let's center the row creation in one spot, in javascript
-             echo "addRow('form-table', $i, '$addrs[$i]', $ports[$i], '$secrets[$i]');\n";
-        } ?>
-        </script>
-	</table>
+       }
+       
+       // load timeout information
+       if (defined($this->wpv_timeout_cfgname)) {
+          $timeout = constant($this->wpv_timeout_cfgname);
 
-      <br/>
+          if (!is_int($timeout)) {
+             $timeout = __("Invalid Value",'wp-varnish');
+          }
 
-      <table>
-        <tr>
-          <td colspan="3"><input type="button" class="" name="wpvarnish_admin" value="+" onclick="addRow ('form-table', rowCount)" /> <?php echo __("Add one more server",'wp-varnish'); ?></td>
-        </tr>
-      </table>
-      <?php
-         }
-      ?>
-      <p><?php echo __("Timeout",'wp-varnish'); ?>: <input class="small-text" type="text" name="wpvarnish_timeout" value="<?php echo $wpv_timeout_optval; ?>" /> <?php echo __("seconds",'wp-varnish'); ?></p>
+          $global_settings[] = "timeout";
+       } else {
+          $timeout = $wpv_timeout_optval;
+       }
 
-      <p><input type="checkbox" name="wpvarnish_use_adminport" value="1" <?php if ($wpv_use_adminport_optval == 1) echo 'checked '?>/> <?php echo __("Use admin port instead of PURGE method.",'wp-varnish'); ?></p>
+       // load adminport information
+       if (defined($this->wpv_use_adminport_cfgname)) {
+          $use_adminport = constant($this->wpv_use_adminport_cfgname);
+          $global_settings[] = "use_adminport";
+       } else {
+          $use_adminport = $wpv_use_adminport_optval;
+       }
+
+       // load varnish version information
+       global $varnish_version;
+       if (defined($this->wpv_vversion_cfgname)) {
+          $vversion = constant($this->wpv_vversion_cfgname);
+
+          if (!in_array($vversion, array(2,3))) {
+             $vversion = __("Invalid Value",'wp-varnish');
+          }
+          
+          $global_settings[] = "vversion";
+       } else if (isset($varnish_version)) { 
+          if (!in_array($varnish_version, array(2,3))) {
+             $vversion = $varnish_version;
+          } else {
+             $vversion = __("Invalid Value",'wp-varnish');
+          }
+          $global_settings[] = "vversion";
+       } else {
+          $vversion = $wpv_vversion_optval;
+       }
+       
+       // if SHOWCFG is set, draw all the stuff that is globally set
+       if (count($global_settings) > 0 && defined($this->wpv_showcfg_cfgname) && constant($this->wpv_showcfg_cfgname)) {
+          echo "<p>" . __("These values can't be edited since there's a global configuration located in <em>wp-config.php</em>. If you want to change these settings, please update the file or contact the administrator.",'wp-varnish') . "</p>\n";
+
+          if (in_array('servers',$global_settings)) {
+             ?>
+             <table class="form-table" id="form-table">
+                <tr valign="top">
+                   <th scope="row"><?php echo __("Varnish Administration IP Address",'wp-varnish'); ?></th>
+                   <th scope="row"><?php echo __("Varnish Administration Port",'wp-varnish'); ?></th>
+                   <th scope="row"><?php echo __("Varnish Secret",'wp-varnish'); ?></th>
+                </tr>
+                <?php
+                for ($i = 0; $i < count ($addrs); $i++) {
+                   echo "<tr><td>{$addrs[$i]}</td><td>{$ports[$i]}</td><td>{$secrets[$i]}</td></tr>"; 
+                }
+             echo "</table>";
+          }
+
+          if (in_array("timeout",$global_settings)) {
+             echo "<p>" . __("Timeout",'wp-varnish') . ": " . $timeout . " " . __("seconds",'wp-varnish') . "</p>";
+          }
+
+          if (in_array("use_adminport",$global_settings)) {
+             echo '<p><input type="checkbox" disabled '.($use_adminport == 1 ? "checked":"").' /> ' . __("Use admin port instead of PURGE method.",'wp-varnish'). "</p>";
+          }
+
+          if (in_array("vversion",$global_settings)) {
+             echo "<p>" . __("Varnish Version",'wp-varnish') . ": " . $vversion . "</p>";
+          }
+       }
+
+       echo "<hr />";
+
+       // draw all of the settings that is not globally set
+       if (!in_array('servers',$global_settings)) {
+          ?>
+          <!-- <table class="form-table" id="form-table" width=""> -->
+          <table class="form-table" id="form-table">
+           <tr valign="top">
+              <th scope="row"><?php echo __("Varnish Administration IP Address",'wp-varnish'); ?></th>
+              <th scope="row"><?php echo __("Varnish Administration Port",'wp-varnish'); ?></th>
+              <th scope="row"><?php echo __("Varnish Secret",'wp-varnish'); ?></th>
+           </tr>
+           <script>
+           <?php
+              echo "rowCount = $i\n";
+              for ($i = 0; $i < count ($addrs); $i++) {
+                 // let's center the row creation in one spot, in javascript
+                 echo "addRow('form-table', $i, '$addrs[$i]', $ports[$i], '$secrets[$i]');\n";
+              }
+           ?>
+           </script>
+	      </table>
+          <br/>
+          <table>
+           <tr>
+              <td colspan="3"><input type="button" class="" name="wpvarnish_admin" value="+" onclick="addRow ('form-table', rowCount)" /> <?php echo __("Add one more server",'wp-varnish'); ?></td>
+           </tr>
+          </table>
+       <?php
+       }
+
+       if (!in_array('timeout',$global_settings)) {
+          echo "<p>" . __ ("Timeout",'wp-varnish') . ": <input class=\"small-text\" type=\"text\" name=\"wpvarnish_timeout\" value=\"$timeout\" /> " . __("seconds",'wp-varnish') . "</p>";
+       }
+
+       if (!in_array('use_adminport',$global_settings)) {
+          echo '<p><input type="checkbox" name="wpvarnish_use_adminport" value="1" '.($use_adminport == 1 ? 'checked' : '').'  /> ' . __("Use admin port instead of PURGE method.",'wp-varnish') . "</p>";
+       }
+       ?>
 
       <p><input type="checkbox" name="wpvarnish_update_pagenavi" value="1" <?php if ($wpv_update_pagenavi_optval == 1) echo 'checked '?>/> <?php echo __("Also purge all page navigation (experimental, use carefully, it will include a bit more load on varnish servers.)",'wp-varnish'); ?></p>
 
       <p><input type="checkbox" name="wpvarnish_update_commentnavi" value="1" <?php if ($wpv_update_commentnavi_optval == 1) echo 'checked '?>/> <?php echo __("Also purge all comment navigation (experimental, use carefully, it will include a bit more load on varnish servers.)",'wp-varnish'); ?></p>
-
-      <p>Varnish Version: <select name="wpvarnish_vversion"><option value="2" <?php if ($wpv_vversion_optval == 2) echo 'selected '?>/> 2 </option><option value="3" <?php if ($wpv_vversion_optval == 3) echo 'selected '?>/> 3 </option></select></p>
-
+<?php
+      if (!in_array('vversion',$global_settings)) {
+         echo "<p>" . __("Varnish Version",'wp-varnish') . ": ";
+         echo '<select name="wpvarnish_vversion">';
+         echo '<option value="2" '.($vversion == 2 ? "selected":"").'>2.x</option>';
+         echo '<option value="3" '.($vversion == 3 ? "selected":"").'>3.x</option>';
+         echo '</select></p>';
+      }
+?>
       <p class="submit"><input type="submit" class="button-primary" name="wpvarnish_admin" value="<?php echo __("Save Changes",'wp-varnish'); ?>" /></p>
 
       <p>
@@ -345,8 +429,8 @@ class WPVarnish {
   // WPVarnishPurgeObject - Takes a location as an argument and purges this object
   // from the varnish cache.
   function WPVarnishPurgeObject($wpv_url) {
+    // look up server values
     global $varnish_servers;
-
     if (is_array($varnish_servers)) {
        foreach ($varnish_servers as $server) {
           $server = explode(':', $server);
@@ -361,11 +445,24 @@ class WPVarnish {
        $wpv_secret = get_option($this->wpv_secret_optname);
     }
 
-    $wpv_timeout = get_option($this->wpv_timeout_optname);
-    $wpv_use_adminport = get_option($this->wpv_use_adminport_optname);
+    // Look up timeout value
+    if (defined($this->wpv_timeout_cfgname) && is_int(constant($this->wpv_timeout_cfgname)))
+       $wpv_timeout = constant($this->wpv_timeout_cfgname);
+    else 
+       $wpv_timeout = get_option($this->wpv_timeout_optname);
+
+    // Look up use_adminport value
+    if (defined($this->wpv_use_adminport_cfgname) && in_array(constant($this->wpv_use_adminport_cfgname), array(0,1)))
+       $wpv_use_adminport = constant($this->wpv_use_adminport_cfgname);
+    else 
+       $wpv_use_adminport = get_option($this->wpv_use_adminport_optname);
+    
+    // Look up varnish version
     global $varnish_version;
-    if ( isset($varnish_version) && in_array($varnish_version, array(2,3)) )
+    if (isset($varnish_version) && in_array($varnish_version, array(2,3)) )
        $wpv_vversion_optval = $varnish_version;
+    else if (defined($this->wpv_vversion_cfgname) && in_array(constant($this->wpv_vversion_optname), array(2,3)))
+       $wpv_vversion_optval = constant($this->wpv_vversion_cfgname);
     else
        $wpv_vversion_optval = get_option($this->wpv_vversion_optname);
 

@@ -461,7 +461,7 @@ class WPVarnish {
     global $varnish_version;
     if (isset($varnish_version) && in_array($varnish_version, array(2,3)) )
        $wpv_vversion_optval = $varnish_version;
-    else if (defined($this->wpv_vversion_cfgname) && in_array(constant($this->wpv_vversion_optname), array(2,3)))
+    else if (defined($this->wpv_vversion_cfgname) && in_array(constant($this->wpv_vversion_cfgname), array(2,3)))
        $wpv_vversion_optval = constant($this->wpv_vversion_cfgname);
     else
        $wpv_vversion_optval = get_option($this->wpv_vversion_optname);
